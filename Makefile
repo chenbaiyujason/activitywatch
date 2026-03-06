@@ -7,7 +7,7 @@
 #
 # We recommend creating and activating a Python virtualenv before building.
 # Instructions on how to do this can be found in the guide linked above.
-.PHONY: build install test clean clean_all
+.PHONY: build install test clean clean_all aw-server-rust-package-for-app
 
 SHELL := /usr/bin/env bash
 
@@ -167,7 +167,12 @@ aw-qt/media/logo/logo.icns:
 	rm -R build/MyIcon.iconset
 	mv build/MyIcon.icns aw-qt/media/logo/logo.icns
 
-dist/ActivityWatch.app: aw-qt/media/logo/logo.icns
+# 打 .app 前必须先构建并刷新 aw-server-rust 的 target/package，否则 PyInstaller 会打包到旧版 aw-server-rust/aw-sync
+aw-server-rust-package-for-app:
+	$(MAKE) --directory=aw-server-rust build
+	$(MAKE) --directory=aw-server-rust package
+
+dist/ActivityWatch.app: aw-qt/media/logo/logo.icns aw-server-rust-package-for-app
 ifeq ($(TAURI_BUILD),true)
 	scripts/package/build_app_tauri.sh
 else

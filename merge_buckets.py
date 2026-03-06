@@ -63,8 +63,10 @@ def merge_buckets(input_path: str, output_path: str):
         
         bdata['events'] = unique_events
         
-        # 更新元数据
+        # 更新元数据（若导出数据中无 metadata 则先创建）
         if unique_events:
+            if 'metadata' not in bdata:
+                bdata['metadata'] = {}
             bdata['metadata']['start'] = unique_events[0]['timestamp']
             bdata['metadata']['end'] = unique_events[-1]['timestamp']
 
@@ -77,6 +79,6 @@ def merge_buckets(input_path: str, output_path: str):
     print("合并完成！")
 
 if __name__ == "__main__":
-    input_file = "/Users/shichen/Downloads/aw-buckets-export (3).json"
-    output_file = "/Users/shichen/Downloads/aw-buckets-export-merged.json"
+    input_file = "/Users/shichen/Downloads/aw-buckets-export.json"
+    output_file = "/Users/shichen/Downloads/aw-buckets-export-merged1.json"
     merge_buckets(input_file, output_file)
