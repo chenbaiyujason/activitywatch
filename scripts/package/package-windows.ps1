@@ -47,7 +47,21 @@ foreach ($m in $pythonModules) {
     }
 }
 
-# aw-server-rust：cargo build 后复制到 dist/activitywatch/aw-server-rust
+# aw-server-rust：须先构建 webui（否则嵌入资源为空，5600 网页 404），再 cargo build
+Write-Host "Building aw-webui for aw-server-rust ..."
+Push-Location "aw-server-rust\aw-webui"
+try {
+    if (Test-Path "package.json") {
+        $ErrorActionPreference = "Continue"
+        & npm ci 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) { & npm install 2>&1 | Out-Null }
+        & npm run build
+        if ($LASTEXITCODE -ne 0) { throw "npm run build failed with exit code $LASTEXITCODE" }
+        if (-not (Test-Path "dist\index.html")) { throw "aw-webui build did not produce dist/index.html" }
+    }
+} finally {
+    Pop-Location
+}
 Write-Host "Packaging aw-server-rust ..."
 Push-Location "aw-server-rust"
 try {
