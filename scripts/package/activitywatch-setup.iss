@@ -56,7 +56,9 @@ Name: "{userstartup}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: St
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
-; Removes the previously installed version before installing the new one
-; NOTE: Doesn't work? And also discouraged by the docs
-;[InstallDelete]
-;Type: filesandordirs; Name: "{app}\"
+; 安装前清理容易受增量覆盖影响的组件目录，避免新旧文件混装。
+[InstallDelete]
+Type: filesandordirs; Name: "{app}\aw-server"
+Type: filesandordirs; Name: "{app}\aw-server-rust"
+Type: filesandordirs; Name: "{app}\aw-watcher-window"
+Type: filesandordirs; Name: "{app}\aw-watcher-afk"

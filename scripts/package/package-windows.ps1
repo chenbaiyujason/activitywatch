@@ -18,8 +18,21 @@ $commit = (git rev-parse --short HEAD 2>&1) | Where-Object { $_ -match '^[a-f0-9
 if (-not $commit) { $commit = "unknown" }
 $tag = "${base}.dev-${commit}"
 $version = $tag -replace '^v', ''
+$cargoJobs = if ($env:AW_PACKAGE_CARGO_JOBS) { $env:AW_PACKAGE_CARGO_JOBS } else { "2" }
+$pyInstallerCmd = Get-Command pyinstaller -ErrorAction SilentlyContinue
+if ($pyInstallerCmd) {
+    $pyInstallerExe = $pyInstallerCmd.Source
+} else {
+    $pyInstallerExe = Join-Path $RepoRoot "venv\Scripts\pyinstaller.exe"
+}
 
 Write-Host "Building ActivityWatch package for Windows, version: $version"
+Write-Host "Using cargo build jobs: $cargoJobs"
+Write-Host "Using pyinstaller: $pyInstallerExe"
+
+if (-not (Test-Path $pyInstallerExe)) {
+    throw "pyinstaller not found. Expected either PATH entry or $pyInstallerExe"
+}
 
 # 清理并创建 dist/activitywatch
 if (Test-Path "dist") { Remove-Item -Recurse -Force "dist" }
@@ -39,7 +52,7 @@ foreach ($m in $pythonModules) {
     Write-Host "Packaging $dir ..."
     Push-Location $dir
     try {
-        pyinstaller --clean --noconfirm $spec
+        & $pyInstallerExe --clean --noconfirm $spec
         if (-not (Test-Path "dist\$dir")) { throw "dist\$dir not found after pyinstaller" }
         Copy-Item -Path "dist\$dir" -Destination "..\dist\activitywatch\$dir" -Recurse -Force
     } finally {
@@ -65,7 +78,7 @@ try {
 Write-Host "Packaging aw-server-rust ..."
 Push-Location "aw-server-rust"
 try {
-    cargo build --release --bin aw-server --bin aw-sync
+    cargo build --release --bin aw-server --bin aw-sync -j $cargoJobs
     $rustOut = "..\dist\activitywatch\aw-server-rust"
     New-Item -ItemType Directory -Path $rustOut -Force | Out-Null
     Copy-Item -Path "target\release\aw-server.exe" -Destination "$rustOut\aw-server-rust.exe" -Force
