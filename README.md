@@ -20,7 +20,7 @@
     <a href="https://activitywatch.net/">Website</a>
     — <a href="https://forum.activitywatch.net/">Forum</a>
     — <a href="https://docs.activitywatch.net">Documentation</a>
-    — <a href="https://github.com/ActivityWatch/activitywatch/releases">Releases</a>
+    — <a href="https://github.com/chenbaiyujason/activitywatch/releases">Releases</a>
   </b>
 
   <br>
@@ -44,10 +44,10 @@
 
   <br>
 
-  <a href="https://github.com/ActivityWatch/activitywatch/releases">
+  <a href="https://github.com/chenbaiyujason/activitywatch/releases">
     <img title="Latest release" src="https://img.shields.io/github/release-pre/ActivityWatch/activitywatch.svg">
   </a>
-  <a href="https://github.com/ActivityWatch/activitywatch/releases">
+  <a href="https://github.com/chenbaiyujason/activitywatch/releases">
     <img title="Total downloads (GitHub Releases)" src="https://img.shields.io/github/downloads/ActivityWatch/activitywatch/total.svg" />
   </a>
   <a href="https://discord.gg/vDskV9q">
@@ -111,7 +111,105 @@ You can find more (and newer) screenshots on [the website](https://activitywatch
 
 ## Installation & Usage
 
-Downloads are available on the [releases page](https://github.com/ActivityWatch/activitywatch/releases).
+Downloads are available on the [releases page](https://github.com/chenbaiyujason/activitywatch/releases).
+
+### 本仓库安装与多设备同步说明
+
+如果你在使用这个仓库维护的 Windows 安装包，请优先前往这里下载最新版本：
+
+- [chenbaiyujason/activitywatch Releases](https://github.com/chenbaiyujason/activitywatch/releases)
+
+建议直接下载最新的安装包，而不是使用旧版本覆盖安装包做增量替换。当前安装器在安装前会先清理以下组件目录，再写入新版本，以降低旧文件残留带来的兼容性问题：
+
+- `aw-server`
+- `aw-server-rust`
+- `aw-watcher-window`
+- `aw-watcher-afk`
+
+### 多设备怎么使用
+
+如果你有多台设备，可以按下面两种方式使用，二者也可以同时配合：
+
+#### 1. 双写模式：本地实时写入，同时转发到远程主机
+
+适合希望某一台远程主机实时收集数据的场景，比如 NAS、家里常开的主机，或者另一台固定在线的电脑。
+
+- 打开 ActivityWatch Dashboard。
+- 进入 **Settings** -> **推送与同步（Client & 远程宿主机）**。
+- 设置本地服务地址，以及可选的远程宿主机地址与端口。
+- 使用 **测试连接** 确认远程主机可达。
+
+在这种模式下，watcher 产生的 bucket 创建和 heartbeat 会先写入本地 `aw-server-rust`，然后由本地服务按配置转发到远程主机。即使远程暂时不可达，本地数据仍会保留；等网络恢复后，仍然可以再通过 `aw-sync` 把各设备的数据补齐合并。
+
+#### 2. 共享盘/共享文件夹同步模式：各设备通过同一个同步目录交换数据
+
+适合设备不总是同时在线，或者你更希望使用共享文件夹而不是中心化服务端的场景。
+
+你可以把同步目录设置在以下任意一种“所有设备都能看到同一内容”的位置：
+
+- 局域网共享盘或 NAS 目录
+- Syncthing 同步目录
+- Dropbox / OneDrive / Google Drive / rsync / rclone 同步到本地的文件夹
+- 移动硬盘或其他会在多台设备之间同步/拷贝的目录
+
+`aw-sync` 会把本机数据写入这个共享目录，然后再从共享目录读取其他设备的数据并合并到本机。
+
+### 同步机制说明
+
+当前 `aw-sync` 的目录布局为：
+
+```text
+<sync-root>/
+  <hostname>/
+    <device_id>/
+      test.db
+```
+
+也就是说：
+
+- 每台设备只写入自己所属的 `hostname/device_id/test.db`
+- 不会去覆盖其他设备的数据库文件
+- 读取时会扫描共享目录下所有设备的数据库并自动合并
+
+为了兼容历史目录，读取时也支持旧布局：
+
+```text
+<sync-root>/<device_id>/test.db
+```
+
+事件合并规则如下：
+
+- bucket 在各设备上保持相同 ID，不再创建 `-synced-from-*` 后缀 bucket
+- 事件身份按 `timestamp + data` 判定
+- 如果同一事件两边都存在，但 `duration` 不同，则保留更长的那个
+- 如果某个事件只存在于一边，则补到另一边
+- 删除不会向其他设备传播，合并策略是“并集合并”
+
+### 共享盘/文件地址下如何设置同步
+
+1. 在所有设备上准备同一个共享目录。
+2. 确保这个目录在所有设备上都能被稳定访问。
+3. 启动 `aw-sync`，并把它指向这个目录。
+
+命令行示例：
+
+```sh
+aw-sync daemon --sync-dir "/path/to/shared/ActivityWatchSync"
+```
+
+如果你是从托盘菜单启动自动同步，那么它本质上也是启动 `aw-sync` 的后台同步进程；只要它使用的同步目录指向同一个共享位置，就能完成多设备互相导入、汇总和去重。
+
+推荐做法：
+
+- 每台设备都开启本地记录
+- 如果需要实时备份，再打开双写模式，把数据同步到远程 aw-server
+- 如果需要设备间互相补齐历史数据，再让所有设备共享同一个 `aw-sync` 目录
+
+这样可以同时获得：
+
+- 本地离线可用
+- 远程实时备份
+- 多设备历史自动汇总
 
 For instructions on how to get started, please see the [guide in the documentation](https://docs.activitywatch.net/en/latest/getting-started.html).
 
@@ -220,7 +318,7 @@ class A,B,C,D,E,G darkMode;
 
 ## About this repository
 
-This repo is a bundle of the core components and official modules of ActivityWatch (managed with `git submodule`). Its primary use is as a meta-package providing all the components in one repo; enabling easier packaging and installation. It is also where releases of the full suite are published (see [releases](https://github.com/ActivityWatch/activitywatch/releases)).
+This repo is a bundle of the core components and official modules of ActivityWatch (managed with `git submodule`). Its primary use is as a meta-package providing all the components in one repo; enabling easier packaging and installation. For builds published from this fork, please use the fork releases page (see [releases](https://github.com/chenbaiyujason/activitywatch/releases)).
 
 ### Server
 
