@@ -126,6 +126,16 @@ Downloads are available on the [releases page](https://github.com/chenbaiyujason
 - `aw-watcher-window`
 - `aw-watcher-afk`
 
+**注意：如果需要多端同步，请确保使用 `server-rust` 模块，而不是 `server` (python)。**
+你可以通过修改 `aw-qt.toml` 配置文件来确保启动的是 Rust 版本。参考设置如下：
+
+```toml
+[aw-qt]
+autostart_modules = ["aw-server-rust", "aw-watcher-afk", "aw-watcher-window", "aw-sync"]
+```
+
+配置文件路径通常位于：`%AppData%\activitywatch\activitywatch\aw-qt\aw-qt.toml`
+
 ### 多设备怎么使用
 
 如果你有多台设备，可以按下面两种方式使用，二者也可以同时配合：
